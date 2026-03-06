@@ -6,9 +6,13 @@
   export let token: string
   export let onLogout: () => void
 
-  const authHeaders = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
+  const API = import.meta.env.VITE_API_URL
+
+  function getHeaders() {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+    }
   }
 
   type Task = {
@@ -26,8 +30,9 @@
 
   onMount(async () => {
     try {
-      const res = await fetch('http://localhost:8080/tasks')
-      tasks = await res.json()
+      const res = await fetch(`${API}/tasks`, { headers: getHeaders() })
+      const data = await res.json()
+      tasks = Array.isArray(data) ? data : []
     } catch (e) {
       error = 'Failed to fetch tasks'
     } finally {
@@ -45,9 +50,9 @@
     const updated = { ...task, Status: !task.Status }
     tasks = tasks.map(t => t.ID === task.ID ? updated : t)
     try {
-      await fetch(`http://localhost:8080/tasks/${task.ID}`, {
+      await fetch(`${API}/tasks/${task.ID}`, {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify(updated),
       })
     } catch {
@@ -64,13 +69,12 @@
     if (!text || creating) return
     creating = true
     try {
-      const res = await fetch('http://localhost:8080/task/create', {
+      const res = await fetch(`${API}/task/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getHeaders(),
         body: JSON.stringify({ Task: text, Description: newDesc.trim(), Status: false }),
       })
       const raw = await res.json()
-      console.log('POST /task/create response:', JSON.stringify(raw))
       const taskField = raw.Task ?? raw.task ?? raw.task_name ?? raw.name
       const created: Task = {
         ID:          raw.ID          ?? raw.id          ?? Date.now(),
@@ -92,8 +96,9 @@
   async function deleteTask(task: Task) {
     tasks = tasks.filter(t => t.ID !== task.ID)
     try {
-      await fetch(`http://localhost:8080/task/delete/${task.ID}`, {
+      await fetch(`${API}/task/delete/${task.ID}`, {
         method: 'DELETE',
+        headers: getHeaders(),
       })
     } catch {
       tasks = [task, ...tasks] // rollback
@@ -204,7 +209,7 @@
 
   <footer>
     <span>{tasks.length} total</span>
-    <span class="endpoint">GET localhost:8080/tasks</span>
+    <span class="endpoint">GET {API}/tasks</span>
   </footer>
 </div>
 
